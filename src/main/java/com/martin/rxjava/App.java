@@ -23,9 +23,9 @@ public class App
 
         List<Future<String>> futures = new ArrayList<>();
 
-        for (int i = 0; i < 20; i++)
+        for (int i = 1; i <= 20; i++)
         {
-            Thread.sleep(100);
+            Thread.sleep(50);
             long startThread = System.currentTimeMillis();
             futures.add(getStringFuture(i));
             System.out.println("Creating thread in " + (System.currentTimeMillis() - startThread) + " milliseconds ");
@@ -33,7 +33,12 @@ public class App
 
         for (Future<String> future : futures)
         {
-            System.out.println("result: " + future.get());
+            try
+            {
+                System.out.println("result: " + future.get());
+            } catch (Exception e)
+            {
+            }
         }
 
         long end = System.currentTimeMillis();
@@ -44,27 +49,51 @@ public class App
                 .map(it -> it.getCommandGroup().toString() + ": " + it.getExecutionTimeInMilliseconds()).collect(Collectors.toList()));
     }
 
-    private static Future<String> getStringFuture(int i)
+    private static Future<String> getStringFuture(int index)
     {
-        return new CacheGetCommand(i).toObservable()
-                                     .onErrorReturn(e -> null)  //exception is not lost, logged by command hook
-                                     .flatMap(cacheResult -> callDownstreamIfNeeded(cacheResult, i))
-                                     .retry(1L)
-                                     .doOnNext(result -> saveToCache(result, i))
-                                     .toBlocking().toFuture();
+        return new CacheGetCommand(index).toObservable()
+                                         .onErrorReturn(e -> null)  // we don't want the flow to abort, so we handle cache error as null
+                                                                    // exception is not lost, logged by command hook
+                                         .flatMap(cacheResult -> callDownstreamIfNeeded(cacheResult, index))
+                                                                    // this it the point where we switch to downstream
+                                                                    // if we have no result from cache
+                                         .retry((count, exception) -> shouldRetry(index, count, exception))
+                                                                    // only retries the downstream, not the cache
+                                                                    // when retries the command, the first command with the error
+                                                                    // does not trigger command hook
+                                                                    // you have to log manually
+                                         .doOnNext(result -> saveToCache(result, index))
+                                         .doOnError(e -> System.out.println("result: " + index + ": " + e.getMessage()))
+                                                                    // this step is not needed
+                                         .toBlocking().toFuture();
+        // https://github.com/Netflix/Hystrix/blob/3eef024579a74c7d196906f43d2370585b00fc68/hystrix-core/src/main/java/com/netflix/hystrix/HystrixCommand.java#L378
     }
 
-    private static Observable<String> callDownstreamIfNeeded(String cacheResult, int i)
+    private static boolean shouldRetry(int index, int count, Throwable exception)
     {
-        System.out.println("local method thread: " + Thread.currentThread().getName());
+        if (count > 2)
+        {
+            System.out.println(index + ": downstream failed with '" + exception.getMessage() + "' no more retries");
+            return false;
+        }
+
+        System.out.println(index + ": downstream failed with '" + exception.getMessage() + "' after " + count + " attempt(s)");
+        return true;
+    }
+
+    private static Observable<String> callDownstreamIfNeeded(String cacheResult, int index)
+    {
+        System.out.println(index + ": name of the thread where we switch between cache and downstream: " + Thread.currentThread().getName());
+        // Cache thread
 
         if (cacheResult != null)
         {
-            //when cache is not null we can return with its result
+            // when cache is not null we can return with its result
             return Observable.just(cacheResult);
         }
 
-        return new DownstreamCommand(i).toObservable();
+        // else we switch to downstream
+        return new DownstreamCommand(index).toObservable();
     }
 
     private static void saveToCache(String result, int index)

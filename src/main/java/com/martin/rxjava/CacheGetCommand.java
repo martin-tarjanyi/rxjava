@@ -1,12 +1,10 @@
 package com.martin.rxjava;
 
-import java.util.concurrent.TimeoutException;
-
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 
-public class CacheGetCommand extends HystrixCommand<String>
+public class CacheGetCommand extends HystrixCommand<String> implements IIndexAware
 {
     private int index;
 
@@ -20,11 +18,21 @@ public class CacheGetCommand extends HystrixCommand<String>
     @Override
     protected String run() throws Exception
     {
+        System.out.println(index + ": Calling cache, Thread name:" + Thread.currentThread().getName());
+        Thread.sleep(200);
 
-            System.out.println(index + ": Calling cache, Thread name:" + Thread.currentThread().getName());
-            Thread.sleep(200);
-                throw new TimeoutException();
-//            return index + ": from_cache";
+        if (Math.random() < 0.7)
+        {
+            throw new RuntimeException("Cache connection failed");
+        }
+
+        return index + ": from_cache";
 //                return null;
+    }
+
+    @Override
+    public int getIndex()
+    {
+        return index;
     }
 }

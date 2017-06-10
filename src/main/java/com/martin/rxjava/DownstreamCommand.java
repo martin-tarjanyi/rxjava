@@ -1,15 +1,12 @@
 package com.martin.rxjava;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 import com.netflix.hystrix.HystrixThreadPoolProperties;
 
-public class DownstreamCommand extends HystrixCommand<String>
+public class DownstreamCommand extends HystrixCommand<String> implements IIndexAware
 {
-    public static final AtomicInteger COMMAND_COUNTER = new AtomicInteger(0);
     private int index;
 
     public DownstreamCommand(int i)
@@ -25,13 +22,20 @@ public class DownstreamCommand extends HystrixCommand<String>
     protected String run() throws Exception
     {
         System.out.println(index + ": Calling downstream, Thread name: " + Thread.currentThread().getName());
-        Thread.sleep(1500);
-//        if (COMMAND_COUNTER.getAndIncrement() % 2 == 0)
-//        {
-//            throw new RuntimeException("Shit happened");
-//        } else
-//        {
+
+        Thread.sleep(2500);
+
+        if (Math.random() < 0.6)
+        {
+            throw new RuntimeException("Downstream command body threw an exception.");
+        }
+
         return index + ": downstream";
-//        }
+    }
+
+    @Override
+    public int getIndex()
+    {
+        return index;
     }
 }
