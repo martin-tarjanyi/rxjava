@@ -4,7 +4,7 @@ import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 
-public class CacheGetCommand extends HystrixCommand<String> implements IIndexAware
+public class CacheGetCommand extends HystrixCommand<String> implements IIndexAware<String>
 {
     private int index;
 
