@@ -62,7 +62,6 @@ public class App
                                                                     // when retries the command, the first command with the error
                                                                     // does not trigger command hook
                                                                     // you have to log manually
-                                         .doOnNext(result -> saveToCache(result, index))
                                          .doOnError(e -> System.out.println("result: " + index + ": " + e.getMessage()))
                                                                     // this step is not needed
                                          .toBlocking().toFuture();
@@ -93,7 +92,7 @@ public class App
         }
 
         // else we switch to downstream
-        return new DownstreamCommand(index).toObservable();
+        return new DownstreamCommand(index).toObservable().doOnNext(result -> saveToCache(result, index));
     }
 
     private static void saveToCache(String result, int index)

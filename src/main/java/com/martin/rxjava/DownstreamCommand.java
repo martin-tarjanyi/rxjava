@@ -23,9 +23,9 @@ public class DownstreamCommand extends HystrixCommand<String> implements IIndexA
     {
         System.out.println(index + ": Calling downstream, Thread name: " + Thread.currentThread().getName());
 
-        Thread.sleep(7500);
+        Thread.sleep(3000);
 
-        if (Math.random() < -0.6)
+        if (Math.random() < 0.3)
         {
             throw new RuntimeException("Downstream command body threw an exception.");
         }
