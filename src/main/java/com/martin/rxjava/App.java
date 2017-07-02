@@ -59,9 +59,6 @@ public class App
                                                                     // if we have no result from cache
                                          .retry((count, exception) -> shouldRetry(index, count, exception))
                                                                     // only retries the downstream, not the cache
-                                                                    // when retries the command, the first command with the error
-                                                                    // does not trigger command hook
-                                                                    // you have to log manually
                                          .doOnError(e -> System.out.println("result: " + index + ": " + e.getMessage()))
                                                                     // this step is not needed
                                          .toBlocking().toFuture();
